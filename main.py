@@ -21,50 +21,68 @@ height = 750
 screen = pygame.display.set_mode([width, height])
 running = True
 
-# Current x, y positions of shape
+# curr x, y positions of shape
 finished_movedown = False
 curr_x = 32
 curr_y = 102
 
-# Function that gets shape down automatically every one second
-def moveDown(surf_m):
-    surface, curr_x, curr_y = surf_m
-    global finished_movedown
-    while True:
-        time.sleep(1)
-        if curr_y < 672:
-            curr_y = curr_y + 30
-        else:
-            break
-    changeSurfacePosition(surf_m, surface, curr_x, curr_y)
+# Defining game's shapes variables
+surfaces = []
+s = shape.Shape()
+surf = (s, curr_x, curr_y)
+surfaces.append(surf)
 
-def changeSurfacePosition(surf_m, surface, curr_x, curr_y):
-    surfaces.remove(surf_m)
-    surfa, current_x, current_y = surf_m
-    surf = (surface, curr_x, curr_y)
+# Function that gets shape down automatically every one second
+def moveDown():
+    global finished_movedown, curr_x, curr_y, surf, s
+    while not finished_movedown:
+        time.sleep(1)
+        if curr_y < 672 and not isCurrentSurfColliding():
+            curr_y = curr_y + 30
+            changeSurfacePosition(s, curr_x, curr_y)
+        else:
+            finished_movedown = True
+
+def changeSurfacePosition(surface, current_x, current_y):
+    global surf
+    surfaces.remove(surf)
+    surf = (surface, current_x, current_y)
     surfaces.append(surf)
 
-    finished_movedown = True
-surfaces = []
-surf = (shape.Shape(), curr_x, curr_y)
-surfaces.append(surf)
-t = threading.Thread(target=moveDown, args=[surf])
+def isCurrentSurfColliding():
+    for surft in surfaces:
+        st, t_x, t_y = surft
+        if surft is surf:
+            continue
+        if curr_y == t_y - 30 and (curr_x < t_x + 180 and curr_x > t_x - 180):
+            return True
+    return False
+
+def getHighestYPoint():
+    y_ret = 672
+    for surft in surfaces:
+        st, t_x, t_y = surft
+        if surft is surf:
+            continue
+        if t_y <= y_ret and (curr_x < t_x + 180 and curr_x > t_x - 180):
+            y_ret = t_y - 30
+    return y_ret
+
+t = threading.Thread(target=moveDown)
 t.start()
-print(surf)
 
 while running:
-
     # Initializing basic stuff for the window
     screen.fill((255, 255, 255))
     pygame.draw.rect(screen, (0, 0, 255), pygame.Rect(30, 100, width - 46, height - 146), 2)
-    curr_shape, current_x, current_y = surf
     if finished_movedown:
         finished_movedown = False
         curr_x = 32
         curr_y = 102
-        surf = (shape.Shape(), curr_x, curr_y)
+        s = shape.Shape()
+        surf = (s, curr_x, curr_y)
         surfaces.append(surf)
-        t = threading.Thread(target=moveDown, args=[surf])
+        t = threading.Thread(target=moveDown)
         t.start()
 
     # For events happening in the game
@@ -77,19 +95,20 @@ while running:
             # Closing game by clicking ESC
             if event.key == K_ESCAPE:
                 running = False
-            if event.key == K_DOWN and current_y < 672:
-                current_y = 672
-                changeSurfacePosition(surf, current_y, current_x)
-            if event.key == K_LEFT and current_x > 32:
-                current_x = current_x - 45
-                changeSurfacePosition(surf, current_y, current_x)
-            if event.key == K_RIGHT and current_x < 302:
-                current_x = current_x + 45
-                changeSurfacePosition(surf, current_y, current_x)
+            if event.key == K_DOWN and curr_y < 672:
+                curr_y = getHighestYPoint()
+                changeSurfacePosition(s, curr_x, curr_y)
+                t.join()
+            if event.key == K_LEFT and curr_x > 32:
+                curr_x = curr_x - 45
+                changeSurfacePosition(s, curr_x, curr_y)
+            if event.key == K_RIGHT and curr_x < 302:
+                curr_x = curr_x + 45
+                changeSurfacePosition(s, curr_x, curr_y)
 
     # Drawing shape to screen
-    for surf, curr_x, curr_y in surfaces:
-        screen.blit(surf.surf, (curr_x, curr_y))
+    for surface, curr_x, curr_y in surfaces:
+        screen.blit(surface.surf, (curr_x, curr_y))
     pygame.display.flip()
 
 
